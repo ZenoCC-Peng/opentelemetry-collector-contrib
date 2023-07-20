@@ -132,7 +132,7 @@ func (cdr *collectdReceiver) defaultAttributes(req *http.Request) map[string]str
 		if strings.HasPrefix(key, cdr.defaultAttrsPrefix) {
 			value := params.Get(key)
 			if len(value) == 0 {
-				//recordDefaultBlankAttrs()
+				recordDefaultBlankAttrs()
 				continue
 			}
 			key = key[len(cdr.defaultAttrsPrefix):]
