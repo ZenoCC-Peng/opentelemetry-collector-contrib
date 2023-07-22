@@ -6,6 +6,7 @@ package loadscraper // import "github.com/open-telemetry/opentelemetry-collector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
 	"time"
 
@@ -90,11 +91,15 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 
 	if s.config.CPUAverage {
 		divisor := float64(runtime.NumCPU())
+		fmt.Println("Divisor", runtime.NumCPU())
 		avgLoadValues.Load1 /= divisor
 		avgLoadValues.Load5 /= divisor
 		avgLoadValues.Load15 /= divisor
 	}
 
+	fmt.Println("Load1", avgLoadValues.Load1)
+	fmt.Println("Load5", avgLoadValues.Load5)
+	fmt.Println("Load15", avgLoadValues.Load15)
 	s.mb.RecordSystemCPULoadAverage1mDataPoint(now, avgLoadValues.Load1)
 	s.mb.RecordSystemCPULoadAverage5mDataPoint(now, avgLoadValues.Load5)
 	s.mb.RecordSystemCPULoadAverage15mDataPoint(now, avgLoadValues.Load15)

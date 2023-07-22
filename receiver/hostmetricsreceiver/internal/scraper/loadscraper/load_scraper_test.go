@@ -6,6 +6,7 @@ package loadscraper
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
 	"testing"
 
@@ -33,7 +34,7 @@ var skip = func(t *testing.T, why string) {
 }
 
 func TestScrape(t *testing.T) {
-	skip(t, "Flaky test. See https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/10030")
+	//skip(t, "Flaky test. See https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/10030")
 	type testCase struct {
 		name         string
 		bootTimeFunc func() (uint64, error)
@@ -127,6 +128,7 @@ func TestScrape(t *testing.T) {
 	// Additional test for average per CPU
 	numCPU := runtime.NumCPU()
 	for i := 0; i < results[testStandard].Len(); i++ {
+		fmt.Println("Test Name:", t.Name())
 		assertCompareAveragePerCPU(t, results[testAverage].At(i), results[testStandard].At(i), numCPU)
 	}
 }
@@ -139,6 +141,9 @@ func assertMetricHasSingleDatapoint(t *testing.T, metric pmetric.Metric, expecte
 func assertCompareAveragePerCPU(t *testing.T, average pmetric.Metric, standard pmetric.Metric, numCPU int) {
 	valAverage := average.Gauge().DataPoints().At(0).DoubleValue()
 	valStandard := standard.Gauge().DataPoints().At(0).DoubleValue()
+
+	fmt.Println("-- CPU -- ", numCPU)
+	fmt.Println("-- Value Avg -- ", valAverage, " Standard : ", valStandard)
 	if numCPU == 1 {
 		// For hardware with only 1 cpu, results must be very close
 		assert.InDelta(t, valAverage, valStandard, 0.1)
