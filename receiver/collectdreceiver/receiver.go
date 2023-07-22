@@ -98,10 +98,10 @@ func (cdr *collectdReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defaultAttrs := cdr.defaultAttributes(r)
 
 	metrics := pmetric.NewMetrics()
-	sm := metrics.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
+	scopeMetrics := metrics.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
 	ctx := context.Background()
 	for _, record := range records {
-		err = record.appendToMetrics(sm, defaultAttrs)
+		err = record.appendToMetrics(scopeMetrics, defaultAttrs)
 		if err != nil {
 			cdr.handleHTTPErr(w, err, "unable to process metrics")
 			return

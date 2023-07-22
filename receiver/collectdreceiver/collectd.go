@@ -13,16 +13,16 @@ import (
 	"time"
 )
 
-const (
-	collectDMetricDerive  = "derive"
-	collectDMetricCounter = "counter"
-)
-
 type TargetMetricType string
 
 const (
 	GaugeMetricType      = TargetMetricType("gauge")
 	CumulativeMetricType = TargetMetricType("cumulative")
+)
+
+const (
+	collectDMetricDerive  = "derive"
+	collectDMetricCounter = "counter"
 )
 
 type collectDRecord struct {
@@ -47,25 +47,25 @@ type createMetricInfo struct {
 	Val    *json.Number
 }
 
-func (r *collectDRecord) isEvent() bool {
-	return r.Time != nil && r.Severity != nil && r.Message != nil
+func (collectd *collectDRecord) isEvent() bool {
+	return collectd.Time != nil && collectd.Severity != nil && collectd.Message != nil
 }
 
-func (r *collectDRecord) protoTime() pcommon.Timestamp {
-	if r.Time == nil {
+func (collectd *collectDRecord) protoTime() pcommon.Timestamp {
+	if collectd.Time == nil {
 		return pcommon.NewTimestampFromTime(time.Time{})
 	}
-	collectedTime, _ := parseTime(*r.Time)
+	collectedTime, _ := parseTime(*collectd.Time)
 	timeStamp := time.Unix(0, 0).Add(collectedTime)
 	return pcommon.NewTimestampFromTime(timeStamp)
 }
 
-func (r *collectDRecord) startTimestamp(mdType TargetMetricType) pcommon.Timestamp {
+func (collectd *collectDRecord) startTimestamp(metricType TargetMetricType) pcommon.Timestamp {
 
-	collectedTime, _ := parseTime(*r.Time)
-	collectdInterval, _ := parseTime(*r.Interval)
+	collectedTime, _ := parseTime(*collectd.Time)
+	collectdInterval, _ := parseTime(*collectd.Interval)
 	timeDiff := collectedTime - collectdInterval
-	if mdType == CumulativeMetricType {
+	if metricType == CumulativeMetricType {
 		return pcommon.NewTimestampFromTime(time.Unix(0, 0).Add(timeDiff))
 	}
 	return pcommon.NewTimestampFromTime(time.Time{})
@@ -77,9 +77,9 @@ func parseTime(timeValue json.Number) (time.Duration, error) {
 	return duration, err
 }
 
-func (r *collectDRecord) appendToMetrics(sm pmetric.ScopeMetrics, defaultLabels map[string]string) error {
+func (collectd *collectDRecord) appendToMetrics(scopeMetrics pmetric.ScopeMetrics, defaultLabels map[string]string) error {
 
-	if r.isEvent() {
+	if collectd.isEvent() {
 		recordEventsReceived()
 		return nil
 	}
@@ -87,33 +87,34 @@ func (r *collectDRecord) appendToMetrics(sm pmetric.ScopeMetrics, defaultLabels 
 	recordMetricsReceived()
 
 	labels := make(map[string]string, len(defaultLabels))
+
 	for k, v := range defaultLabels {
 		labels[k] = v
 	}
 
-	for i := range r.Dsnames {
+	for i := range collectd.Dsnames {
 
-		if i < len(r.Dstypes) && i < len(r.Values) && r.Values[i] != nil {
-			dsType, dsName, val := r.Dstypes[i], r.Dsnames[i], r.Values[i]
-			metricName, usedDsName := r.getReasonableMetricName(i, labels)
+		if i < len(collectd.Dstypes) && i < len(collectd.Values) && collectd.Values[i] != nil {
+			dsType, dsName, val := collectd.Dstypes[i], collectd.Dsnames[i], collectd.Values[i]
+			metricName, usedDsName := collectd.getReasonableMetricName(i, labels)
 			createMetric := createMetricInfo{
 				Name:   metricName,
 				DsType: dsType,
 				Val:    val,
 			}
 
-			addIfNotNullOrEmpty(labels, "plugin", r.Plugin)
-			parseAndAddLabels(labels, r.PluginInstance, r.Host)
+			addIfNotNullOrEmpty(labels, "plugin", collectd.Plugin)
+			parseAndAddLabels(labels, collectd.PluginInstance, collectd.Host)
 			if !usedDsName {
 				addIfNotNullOrEmpty(labels, "dsname", dsName)
 			}
 
-			metric, err := r.newMetric(createMetric, labels)
+			metric, err := collectd.newMetric(createMetric, labels)
 			if err != nil {
 				return fmt.Errorf("error processing metric %s: %w", sanitize.String(metricName), err)
 			}
 
-			newMetric := sm.Metrics().AppendEmpty()
+			newMetric := scopeMetrics.Metrics().AppendEmpty()
 			metric.MoveTo(newMetric)
 		}
 	}
@@ -123,9 +124,9 @@ func (r *collectDRecord) appendToMetrics(sm pmetric.ScopeMetrics, defaultLabels 
 // Create new metric, get labels, then setting attribute and metric info
 // Returns:
 // A new Metric
-func (r *collectDRecord) newMetric(createMetric createMetricInfo, labels map[string]string) (pmetric.Metric, error) {
-	attributes := labelKeysAndValues(labels)
-	metric, err := r.setMetric(createMetric, attributes)
+func (collectd *collectDRecord) newMetric(createMetric createMetricInfo, labels map[string]string) (pmetric.Metric, error) {
+	attributes := setAttributes(labels)
+	metric, err := collectd.setMetric(createMetric, attributes)
 	if err != nil {
 		return pmetric.Metric{}, fmt.Errorf("error processing metric %s: %w", createMetric.Name, err)
 	}
@@ -135,25 +136,24 @@ func (r *collectDRecord) newMetric(createMetric createMetricInfo, labels map[str
 // Set new metric info with name, datapoint, time, attributes
 // Returns:
 // new Metric
-func (r *collectDRecord) setMetric(createMetric createMetricInfo, attributes pcommon.Map) (pmetric.Metric, error) {
+func (collectd *collectDRecord) setMetric(createMetric createMetricInfo, attributes pcommon.Map) (pmetric.Metric, error) {
 	typ := ""
 	metric := pmetric.NewMetric()
-	var dataPoint pmetric.NumberDataPoint
 
 	if createMetric.DsType != nil {
 		typ = *createMetric.DsType
 	}
 
 	metric.SetName(createMetric.Name)
-	dataPoint = r.setDataPoint(typ, metric, dataPoint)
+	dataPoint := collectd.setDataPoint(typ, metric)
 	// todo: ask from pst to utc is ok???
-	dataPoint.SetTimestamp(r.protoTime())
+	dataPoint.SetTimestamp(collectd.protoTime())
 	attributes.CopyTo(dataPoint.Attributes())
 
-	if v, err := createMetric.Val.Int64(); err == nil {
-		dataPoint.SetIntValue(v)
-	} else if v, err := createMetric.Val.Float64(); err == nil {
-		dataPoint.SetDoubleValue(v)
+	if val, err := createMetric.Val.Int64(); err == nil {
+		dataPoint.SetIntValue(val)
+	} else if val, err := createMetric.Val.Float64(); err == nil {
+		dataPoint.SetDoubleValue(val)
 	} else {
 		return pmetric.Metric{}, fmt.Errorf("value could not be decoded: %w", err)
 	}
@@ -161,7 +161,8 @@ func (r *collectDRecord) setMetric(createMetric createMetricInfo, attributes pco
 	return metric, nil
 }
 
-func (r *collectDRecord) setDataPoint(typ string, metric pmetric.Metric, dataPoint pmetric.NumberDataPoint) pmetric.NumberDataPoint {
+func (collectd *collectDRecord) setDataPoint(typ string, metric pmetric.Metric) pmetric.NumberDataPoint {
+	var dataPoint pmetric.NumberDataPoint
 	switch typ {
 	case collectDMetricCounter, collectDMetricDerive:
 		sum := metric.SetEmptySum()
@@ -176,38 +177,38 @@ func (r *collectDRecord) setDataPoint(typ string, metric pmetric.Metric, dataPoi
 // getReasonableMetricName creates metrics names by joining them (if non empty) type.typeinstance
 // if there are more than one dsname append .dsname for the particular uint. if there's only one it
 // becomes a dimension.
-func (r *collectDRecord) getReasonableMetricName(index int, attrs map[string]string) (string, bool) {
+func (collectd *collectDRecord) getReasonableMetricName(index int, attrs map[string]string) (string, bool) {
 	usedDsName := false
 	capacity := 0
-	if r.TypeS != nil {
-		capacity += len(*r.TypeS)
+	if collectd.TypeS != nil {
+		capacity += len(*collectd.TypeS)
 	}
-	if r.TypeInstance != nil {
-		capacity += len(*r.TypeInstance)
+	if collectd.TypeInstance != nil {
+		capacity += len(*collectd.TypeInstance)
 	}
 	parts := make([]byte, 0, capacity)
 
-	if !isNilOrEmpty(r.TypeS) {
-		parts = append(parts, *r.TypeS...)
+	if !isNilOrEmpty(collectd.TypeS) {
+		parts = append(parts, *collectd.TypeS...)
 	}
-	parts = r.pointTypeInstance(attrs, parts)
-	if r.Dsnames != nil && !isNilOrEmpty(r.Dsnames[index]) && len(r.Dsnames) > 1 {
+	parts = collectd.pointTypeInstance(attrs, parts)
+	if collectd.Dsnames != nil && !isNilOrEmpty(collectd.Dsnames[index]) && len(collectd.Dsnames) > 1 {
 		if len(parts) > 0 {
 			parts = append(parts, '.')
 		}
-		parts = append(parts, *r.Dsnames[index]...)
+		parts = append(parts, *collectd.Dsnames[index]...)
 		usedDsName = true
 	}
 	return string(parts), usedDsName
 }
 
 // pointTypeInstance extracts information from the TypeInstance field and appends to the metric name when possible.
-func (r *collectDRecord) pointTypeInstance(attrs map[string]string, parts []byte) []byte {
-	if isNilOrEmpty(r.TypeInstance) {
+func (collectd *collectDRecord) pointTypeInstance(attrs map[string]string, parts []byte) []byte {
+	if isNilOrEmpty(collectd.TypeInstance) {
 		return parts
 	}
 
-	instanceName, extractedAttrs := LabelsFromName(r.TypeInstance)
+	instanceName, extractedAttrs := LabelsFromName(collectd.TypeInstance)
 	if instanceName != "" {
 		if len(parts) > 0 {
 			parts = append(parts, '.')
@@ -296,7 +297,7 @@ func parseNameForLabels(labels map[string]string, key string, val *string) {
 	addIfNotNullOrEmpty(labels, key, &instanceName)
 }
 
-func labelKeysAndValues(labels map[string]string) pcommon.Map {
+func setAttributes(labels map[string]string) pcommon.Map {
 
 	attributes := pcommon.NewMap()
 	for k, v := range labels {

@@ -19,7 +19,7 @@ import (
 
 func TestDecodeEvent(t *testing.T) {
 	metrics := pmetric.NewMetrics()
-	sm := metrics.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
+	scopeMetrics := metrics.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
 	jsonData, err := os.ReadFile(filepath.Join("testdata", "event.json"))
 	require.NoError(t, err)
 
@@ -27,8 +27,8 @@ func TestDecodeEvent(t *testing.T) {
 	err = json.Unmarshal(jsonData, &records)
 	require.NoError(t, err)
 
-	for _, r := range records {
-		err := r.appendToMetrics(sm, map[string]string{})
+	for _, collectd := range records {
+		err := collectd.appendToMetrics(scopeMetrics, map[string]string{})
 		assert.NoError(t, err)
 		assert.Equal(t, metrics.MetricCount(), 0)
 	}
@@ -44,8 +44,8 @@ func TestDecodeMetrics(t *testing.T) {
 	err = json.Unmarshal(jsonData, &records)
 	require.NoError(t, err)
 
-	for _, r := range records {
-		err = r.appendToMetrics(scopeMemtrics, map[string]string{})
+	for _, collectd := range records {
+		err = collectd.appendToMetrics(scopeMemtrics, map[string]string{})
 		assert.NoError(t, err)
 	}
 	assert.Equal(t, 10, metrics.MetricCount())
