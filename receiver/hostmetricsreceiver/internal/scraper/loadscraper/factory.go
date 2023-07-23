@@ -5,6 +5,7 @@ package loadscraper // import "github.com/open-telemetry/opentelemetry-collector
 
 import (
 	"context"
+	"fmt"
 
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/scraperhelper"
@@ -38,6 +39,9 @@ func (f *Factory) CreateMetricsScraper(
 	config internal.Config,
 ) (scraperhelper.Scraper, error) {
 	cfg := config.(*Config)
+	fmt.Println("cfg", cfg)
+	fmt.Println("settings", settings.BuildInfo)
+	fmt.Println("ctx", ctx)
 	s := newLoadScraper(ctx, settings, cfg)
 
 	return scraperhelper.NewScraper(
