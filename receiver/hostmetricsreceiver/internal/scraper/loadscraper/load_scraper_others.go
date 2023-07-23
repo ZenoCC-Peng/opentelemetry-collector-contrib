@@ -8,7 +8,7 @@ package loadscraper // import "github.com/open-telemetry/opentelemetry-collector
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/shirou/gopsutil/v3/load"
 	"go.uber.org/zap"
 )
@@ -23,5 +23,7 @@ func stopSampling(_ context.Context) error {
 }
 
 func getSampledLoadAverages() (*load.AvgStat, error) {
+	fmt.Println("avg")
+	fmt.Println(load.Avg())
 	return load.Avg()
 }

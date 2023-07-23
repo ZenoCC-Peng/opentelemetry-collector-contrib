@@ -95,6 +95,7 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 		avgLoadValues.Load1 /= divisor
 		avgLoadValues.Load5 /= divisor
 		avgLoadValues.Load15 /= divisor
+		// is 0 avgLoadValues.Load1 , avgLoadValues.Load5 , avgLoadValues.Load15
 	}
 
 	fmt.Println("Load1", avgLoadValues.Load1)
