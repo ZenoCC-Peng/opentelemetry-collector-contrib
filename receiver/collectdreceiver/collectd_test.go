@@ -102,7 +102,7 @@ func TestLabelsFromName(t *testing.T) {
 	}
 }
 
-func createPtrJsonNumber(v json.Number) *json.Number {
+func createPtrJSONNumber(v json.Number) *json.Number {
 	return &v
 }
 
@@ -116,8 +116,8 @@ func TestStartTimestamp(t *testing.T) {
 		{
 			name: "metric type cumulative distribution",
 			record: collectDRecord{
-				Time:     createPtrJsonNumber(json.Number("10")),
-				Interval: createPtrJsonNumber(json.Number("5")),
+				Time:     createPtrJSONNumber(json.Number("10")),
+				Interval: createPtrJSONNumber(json.Number("5")),
 			},
 			metricDescriptorType: CumulativeMetricType,
 			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Unix(5, 0)),
@@ -125,8 +125,8 @@ func TestStartTimestamp(t *testing.T) {
 		{
 			name: "metric type cumulative double",
 			record: collectDRecord{
-				Time:     createPtrJsonNumber(json.Number("10")),
-				Interval: createPtrJsonNumber(json.Number("5")),
+				Time:     createPtrJSONNumber(json.Number("10")),
+				Interval: createPtrJSONNumber(json.Number("5")),
 			},
 			metricDescriptorType: CumulativeMetricType,
 			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Unix(5, 0)),
@@ -134,8 +134,8 @@ func TestStartTimestamp(t *testing.T) {
 		{
 			name: "metric type cumulative int64",
 			record: collectDRecord{
-				Time:     createPtrJsonNumber(json.Number("10")),
-				Interval: createPtrJsonNumber(json.Number("5")),
+				Time:     createPtrJSONNumber(json.Number("10")),
+				Interval: createPtrJSONNumber(json.Number("5")),
 			},
 			metricDescriptorType: CumulativeMetricType,
 			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Unix(5, 0)),
@@ -143,8 +143,8 @@ func TestStartTimestamp(t *testing.T) {
 		{
 			name: "metric type non-cumulative gauge distribution",
 			record: collectDRecord{
-				Time:     createPtrJsonNumber(json.Number("0")),
-				Interval: createPtrJsonNumber(json.Number("0")),
+				Time:     createPtrJSONNumber(json.Number("0")),
+				Interval: createPtrJSONNumber(json.Number("0")),
 			},
 			metricDescriptorType: GaugeMetricType,
 			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Time{}),
@@ -152,8 +152,8 @@ func TestStartTimestamp(t *testing.T) {
 		{
 			name: "metric type non-cumulative gauge int64",
 			record: collectDRecord{
-				Time:     createPtrJsonNumber(json.Number("0")),
-				Interval: createPtrJsonNumber(json.Number("0")),
+				Time:     createPtrJSONNumber(json.Number("0")),
+				Interval: createPtrJSONNumber(json.Number("0")),
 			},
 			metricDescriptorType: GaugeMetricType,
 			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Time{}),
@@ -161,8 +161,8 @@ func TestStartTimestamp(t *testing.T) {
 		{
 			name: "metric type non-cumulativegauge double",
 			record: collectDRecord{
-				Time:     createPtrJsonNumber(json.Number("0")),
-				Interval: createPtrJsonNumber(json.Number("0")),
+				Time:     createPtrJSONNumber(json.Number("0")),
+				Interval: createPtrJSONNumber(json.Number("0")),
 			},
 			metricDescriptorType: GaugeMetricType,
 			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Time{}),
