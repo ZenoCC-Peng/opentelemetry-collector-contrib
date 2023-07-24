@@ -68,7 +68,9 @@ func TestScrape(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
+			fmt.Println("Start test newnewLoadScraper")
 			scraper := newLoadScraper(context.Background(), receivertest.NewNopCreateSettings(), test.config)
+			fmt.Println("test newLoadScraper end")
 			if test.loadFunc != nil {
 				scraper.load = test.loadFunc
 			}
