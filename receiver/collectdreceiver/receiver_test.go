@@ -6,21 +6,38 @@ package collectdreceiver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
-	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/pmetric"
-	"net/http"
-	"testing"
-	"time"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
+	"net/http"
+	"testing"
+	"time"
 )
+
+type wantedBody struct {
+	Name       string
+	Time       json.Number
+	Attributes map[string]string
+	Value      float64
+}
+
+type testCase struct {
+	name         string
+	queryParams  string
+	requestBody  string
+	responseCode int
+	wantData     []pmetric.Metrics
+}
+
+const endpoint = "localhost:8081"
 
 func TestNewReceiver(t *testing.T) {
 	type args struct {
@@ -63,68 +80,89 @@ func TestNewReceiver(t *testing.T) {
 }
 
 func TestCollectDServer(t *testing.T) {
-	const endpoint = "localhost:8081"
 	defaultAttrsPrefix := "dap_"
 
-	type testCase struct {
-		name         string
-		queryParams  string
-		requestBody  string
-		responseCode int
-		wantData     []pmetric.Metrics
+	wantedRequestBody := wantedBody{
+		Name: "memory.free",
+		Time: "1415062577.494999900",
+		Attributes: map[string]string{
+			"plugin": "memory",
+			"host":   "i-b13d1e5f",
+			"dsname": "value",
+			"attr1":  "attr1val",
+		},
+		Value: 2.1474,
 	}
 
-	var dataPoint pmetric.NumberDataPoint
-	testMetrics := pmetric.NewMetrics()
-	scopeMemtrics := testMetrics.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
-	testMetric := pmetric.NewMetric()
-	testMetric.SetName("memory.free")
-	sum := testMetric.SetEmptySum()
-	sum.SetIsMonotonic(true)
-	dataPoint = sum.DataPoints().AppendEmpty()
-	collectedTime, _ := parseTime("1415062577494999808")
-	dataPoint.SetTimestamp(pcommon.NewTimestampFromTime(time.Unix(0, 0).Add(collectedTime)))
-	attributes := pcommon.NewMap()
-	attributes.PutStr("plugin", "memory")
-	attributes.PutStr("host", "i-b13d1e5f")
-	attributes.PutStr("dsname", "i-value")
-	attributes.PutStr("attr1", "attr1val")
-	attributes.CopyTo(dataPoint.Attributes())
-	dataPoint.SetDoubleValue(2.1474)
+	wantedDefaultAttributes := wantedBody{
+		Name: "memory.free",
+		Time: "1415062577.494999900",
+		Attributes: map[string]string{
+			"plugin": "memory",
+			"host":   "i-b13d1e5f",
+			"dsname": "value",
+		},
+		Value: 2.1474,
+	}
 
-	newMetric := scopeMemtrics.Metrics().AppendEmpty()
-	testMetric.MoveTo(newMetric)
+	wantedRequestBodyMetrics := createWantedMetrics(wantedRequestBody)
+	wantedDefaultAttributesMetrics := createWantedMetrics(wantedDefaultAttributes)
 
 	testCases := []testCase{{
 		name:        "valid-request-body",
 		queryParams: "dap_attr1=attr1val",
 		requestBody: `[
-    {
-        "dsnames": [
-            "value"
-        ],
-        "dstypes": [
-            "derive"
-        ],
-        "host": "i-b13d1e5f",
-        "interval": 10.0,
-        "plugin": "memory",
-        "plugin_instance": "",
-        "time": 1415062577.4949999,
-        "type": "memory",
-        "type_instance": "free",
-        "values": [
-            2.1474
-        ]
-    }
-]`,
+			{
+				"dsnames": [
+					"value"
+				],
+				"dstypes": [
+					"derive"
+				],
+				"host": "i-b13d1e5f",
+				"interval": 10.0,
+				"plugin": "memory",
+				"plugin_instance": "",
+				"time": 1415062577.494999900,
+				"type": "memory",
+				"type_instance": "free",
+				"values": [
+					2.1474
+				]
+			}
+		]`,
 		responseCode: 200,
-		wantData:     []pmetric.Metrics{},
+		wantData:     []pmetric.Metrics{wantedRequestBodyMetrics},
 	}, {
 		name:         "invalid-request-body",
 		requestBody:  `invalid-body`,
 		responseCode: 400,
 		wantData:     []pmetric.Metrics{},
+	}, {
+		name:        "valid-default-attributes",
+		queryParams: "dap_attr1=",
+		requestBody: `[
+			{
+			"dsnames": [
+			  "value"
+			],
+			"dstypes": [
+			  "derive"
+			],
+			"host": "i-b13d1e5f",
+			"interval": 10.0,
+			"plugin": "memory",
+			"plugin_instance": "",
+			"time": 1415062577.4949999,
+			"type": "memory",
+			"type_instance": "free",
+			"values": [
+			  2.1474
+			]
+			}
+		]`,
+		responseCode: 200,
+		wantData:     []pmetric.Metrics{wantedDefaultAttributesMetrics},
 	}}
 
 	sink := new(consumertest.MetricsSink)
@@ -171,16 +209,69 @@ func TestCollectDServer(t *testing.T) {
 
 			mds := sink.AllMetrics()
 			require.Len(t, mds, 1)
-			asserReceiverMetricsAreEqual(t, mds, tt.wantData)
+			assertReceiverMetricsAreEqual(t, tt.wantData, mds)
 
 		})
 	}
+
+	testInvalidMethod(t, sink)
 }
 
-func asserReceiverMetricsAreEqual(t *testing.T, p []pmetric.Metrics, data2 []pmetric.Metrics) {
+func testInvalidMethod(t *testing.T, sink *consumertest.MetricsSink) {
 
-	for i := 0; i < len(data2); i++ {
-		err := pmetrictest.CompareMetrics(p[i], data2[i])
+	testInvlidMethodCase := testCase{
+		name:         "invalid-request-body",
+		requestBody:  `invalid-body`,
+		responseCode: 400,
+		wantData:     []pmetric.Metrics{},
+	}
+
+	t.Run(testInvlidMethodCase.name, func(t *testing.T) {
+		sink.Reset()
+		req, err := http.NewRequest(
+			"GET",
+			"http://"+endpoint+"?"+testInvlidMethodCase.queryParams,
+			bytes.NewBuffer([]byte(testInvlidMethodCase.requestBody)),
+		)
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		assert.Equal(t, testInvlidMethodCase.responseCode, resp.StatusCode)
+		defer resp.Body.Close()
+	})
+}
+
+func createWantedMetrics(wantedBody wantedBody) pmetric.Metrics {
+	var dataPoint pmetric.NumberDataPoint
+	testMetrics := pmetric.NewMetrics()
+	scopeMemtrics := testMetrics.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
+	testMetric := pmetric.NewMetric()
+	testMetric.SetName(wantedBody.Name)
+	sum := testMetric.SetEmptySum()
+	sum.SetIsMonotonic(true)
+	dataPoint = sum.DataPoints().AppendEmpty()
+	collectedTime, _ := parseTime(wantedBody.Time)
+	dataPoint.SetTimestamp(pcommon.NewTimestampFromTime(time.Unix(0, 0).Add(collectedTime)))
+	attributes := pcommon.NewMap()
+
+	for key, value := range wantedBody.Attributes {
+		attributes.PutStr(key, value)
+	}
+
+	attributes.CopyTo(dataPoint.Attributes())
+	dataPoint.SetDoubleValue(wantedBody.Value)
+
+	newMetric := scopeMemtrics.Metrics().AppendEmpty()
+	testMetric.MoveTo(newMetric)
+	return testMetrics
+}
+
+func assertReceiverMetricsAreEqual(t *testing.T, expectedData []pmetric.Metrics, actualData []pmetric.Metrics) {
+
+	for i := 0; i < len(expectedData); i++ {
+		err := pmetrictest.CompareMetrics(expectedData[i], actualData[i])
 		require.NoError(t, err)
 	}
 }

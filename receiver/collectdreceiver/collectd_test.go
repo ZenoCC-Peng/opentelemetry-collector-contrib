@@ -30,7 +30,7 @@ func TestDecodeEvent(t *testing.T) {
 	for _, collectd := range records {
 		err := collectd.appendToMetrics(scopeMetrics, map[string]string{})
 		assert.NoError(t, err)
-		assert.Equal(t, metrics.MetricCount(), 0)
+		assert.Equal(t, 0, metrics.MetricCount())
 	}
 }
 
