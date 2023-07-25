@@ -40,9 +40,9 @@ type scraper struct {
 // newLoadScraper creates a set of Load related metrics
 func newLoadScraper(_ context.Context, settings receiver.CreateSettings, cfg *Config) *scraper {
 	fmt.Println("new~!!")
-	var p, err = getSampledLoadAverages()
-	fmt.Println("p", p)
-	fmt.Println("err", err)
+	//var p, err = getSampledLoadAverages()
+	//fmt.Println("print p", p)
+	//fmt.Println("err", err)
 	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages}
 }
 
