@@ -44,7 +44,7 @@ func newLoadScraper(_ context.Context, settings receiver.CreateSettings, cfg *Co
 	//fmt.Println("print p", p)
 	//fmt.Println("err", err)
 	// problem getSampledLoadAverages is nil
-	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages}
+	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages2}
 }
 
 // start
@@ -55,7 +55,7 @@ func (s *scraper) start(ctx context.Context, _ component.Host) error {
 	}
 
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
-	err = startSampling(ctx, s.settings.Logger)
+	err = startSampling2(ctx, s.settings.Logger)
 
 	var initErr *perfcounters.PerfCounterInitError
 	switch {
@@ -79,7 +79,7 @@ func (s *scraper) shutdown(ctx context.Context) error {
 		// so it doesn't need to be shut down.
 		return nil
 	}
-	return stopSampling(ctx)
+	return stopSampling2(ctx)
 }
 
 // scrape
@@ -114,15 +114,15 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 }
 
 // unix based systems sample & compute load averages in the kernel, so nothing to do here
-func startSampling(_ context.Context, _ *zap.Logger) error {
+func startSampling2(_ context.Context, _ *zap.Logger) error {
 	return nil
 }
 
-func stopSampling(_ context.Context) error {
+func stopSampling2(_ context.Context) error {
 	return nil
 }
 
-func getSampledLoadAverages() (*load.AvgStat, error) {
+func getSampledLoadAverages2() (*load.AvgStat, error) {
 	fmt.Println("avg")
 	fmt.Println(load.Avg())
 	fmt.Println("end avg")
