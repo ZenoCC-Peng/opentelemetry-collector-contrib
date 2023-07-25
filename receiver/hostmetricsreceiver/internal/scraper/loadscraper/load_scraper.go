@@ -124,6 +124,7 @@ func stopSampling2(_ context.Context) error {
 
 func getSampledLoadAverages2() (*load.AvgStat, error) {
 	fmt.Println("avg")
+	// all of them are 0?
 	fmt.Println(load.Avg())
 	fmt.Println("end avg")
 	return load.Avg()
