@@ -43,6 +43,7 @@ func newLoadScraper(_ context.Context, settings receiver.CreateSettings, cfg *Co
 	//var p, err = getSampledLoadAverages()
 	//fmt.Println("print p", p)
 	//fmt.Println("err", err)
+	// problem getSampledLoadAverages is nil
 	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages}
 }
 
@@ -110,4 +111,20 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 	s.mb.RecordSystemCPULoadAverage15mDataPoint(now, avgLoadValues.Load15)
 
 	return s.mb.Emit(), nil
+}
+
+// unix based systems sample & compute load averages in the kernel, so nothing to do here
+func startSampling(_ context.Context, _ *zap.Logger) error {
+	return nil
+}
+
+func stopSampling(_ context.Context) error {
+	return nil
+}
+
+func getSampledLoadAverages() (*load.AvgStat, error) {
+	fmt.Println("avg")
+	fmt.Println(load.Avg())
+	fmt.Println("end avg")
+	return load.Avg()
 }
