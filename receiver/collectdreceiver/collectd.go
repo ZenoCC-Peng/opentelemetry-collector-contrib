@@ -6,11 +6,13 @@ package collectdreceiver // import "github.com/open-telemetry/opentelemetry-coll
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/common/sanitize"
-	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/common/sanitize"
 )
 
 type TargetMetricType string
