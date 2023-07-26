@@ -6,6 +6,7 @@ package loadscraper // import "github.com/open-telemetry/opentelemetry-collector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
 	"time"
 
@@ -38,7 +39,12 @@ type scraper struct {
 
 // newLoadScraper creates a set of Load related metrics
 func newLoadScraper(_ context.Context, settings receiver.CreateSettings, cfg *Config) *scraper {
-	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages}
+	fmt.Println("new~!!")
+	//var p, err = getSampledLoadAverages()
+	//fmt.Println("print p", p)
+	//fmt.Println("err", err)
+	// problem getSampledLoadAverages is nil
+	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages2}
 }
 
 // start
@@ -49,7 +55,7 @@ func (s *scraper) start(ctx context.Context, _ component.Host) error {
 	}
 
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
-	err = startSampling(ctx, s.settings.Logger)
+	err = startSampling2(ctx, s.settings.Logger)
 
 	var initErr *perfcounters.PerfCounterInitError
 	switch {
@@ -73,7 +79,7 @@ func (s *scraper) shutdown(ctx context.Context) error {
 		// so it doesn't need to be shut down.
 		return nil
 	}
-	return stopSampling(ctx)
+	return stopSampling2(ctx)
 }
 
 // scrape
@@ -83,21 +89,56 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 	}
 
 	now := pcommon.NewTimestampFromTime(time.Now())
+	var avgLoadValues *load.AvgStat
 	avgLoadValues, err := s.load()
+	if runtime.GOOS == "windows" {
+		for avgLoadValues.Load1 <= 0 && avgLoadValues.Load5 <= 0 && avgLoadValues.Load15 <= 0 {
+			avgLoadValues, err = s.load()
+		}
+	}
+
 	if err != nil {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 	}
 
 	if s.config.CPUAverage {
 		divisor := float64(runtime.NumCPU())
+		fmt.Println("Divisor", runtime.NumCPU())
 		avgLoadValues.Load1 /= divisor
 		avgLoadValues.Load5 /= divisor
 		avgLoadValues.Load15 /= divisor
+		// is 0 avgLoadValues.Load1 , avgLoadValues.Load5 , avgLoadValues.Load15
 	}
 
+	fmt.Println("Load1", avgLoadValues.Load1)
+	fmt.Println("Load5", avgLoadValues.Load5)
+	fmt.Println("Load15", avgLoadValues.Load15)
 	s.mb.RecordSystemCPULoadAverage1mDataPoint(now, avgLoadValues.Load1)
 	s.mb.RecordSystemCPULoadAverage5mDataPoint(now, avgLoadValues.Load5)
 	s.mb.RecordSystemCPULoadAverage15mDataPoint(now, avgLoadValues.Load15)
 
 	return s.mb.Emit(), nil
+}
+
+// unix based systems sample & compute load averages in the kernel, so nothing to do here
+func startSampling2(_ context.Context, _ *zap.Logger) error {
+	return nil
+}
+
+func stopSampling2(_ context.Context) error {
+	return nil
+}
+
+func getSampledLoadAverages2() (*load.AvgStat, error) {
+	fmt.Println("avg")
+	// all of them are 0?
+	//fmt.Println(runtime.GOOS)
+	//if runtime.GOOS == "windows" {
+	//	fmt.Println("Hello from Windows")
+	//	while(*load.AvgStat.Load5)
+	//	time.Sleep(6 * time.Second)
+	//}
+	//fmt.Println(load.Avg())
+	//fmt.Println("end avg")
+	return load.Avg()
 }
