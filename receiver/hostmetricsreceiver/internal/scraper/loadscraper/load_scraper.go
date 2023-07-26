@@ -39,22 +39,22 @@ type scraper struct {
 
 // newLoadScraper creates a set of Load related metrics
 func newLoadScraper(_ context.Context, settings receiver.CreateSettings, cfg *Config) *scraper {
-	fmt.Println("new~!!")
-	//var p, err = getSampledLoadAverages()
-	//fmt.Println("print p", p)
-	//fmt.Println("err", err)
-	// problem getSampledLoadAverages is nil
 	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages}
 }
 
-// start
+// start update start, setup time
+// evidennce,
 func (s *scraper) start(ctx context.Context, _ component.Host) error {
 	bootTime, err := s.bootTime()
+	fmt.Println(bootTime)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("bg", context.Background())
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
+	fmt.Println(s.bootTime())
+
 	err = startSampling(ctx, s.settings.Logger)
 
 	var initErr *perfcounters.PerfCounterInitError
