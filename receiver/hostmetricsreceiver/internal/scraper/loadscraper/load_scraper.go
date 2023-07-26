@@ -44,7 +44,7 @@ func newLoadScraper(_ context.Context, settings receiver.CreateSettings, cfg *Co
 	//fmt.Println("print p", p)
 	//fmt.Println("err", err)
 	// problem getSampledLoadAverages is nil
-	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages2}
+	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages}
 }
 
 // start
@@ -55,7 +55,7 @@ func (s *scraper) start(ctx context.Context, _ component.Host) error {
 	}
 
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
-	err = startSampling2(ctx, s.settings.Logger)
+	err = startSampling(ctx, s.settings.Logger)
 
 	var initErr *perfcounters.PerfCounterInitError
 	switch {
@@ -79,7 +79,7 @@ func (s *scraper) shutdown(ctx context.Context) error {
 		// so it doesn't need to be shut down.
 		return nil
 	}
-	return stopSampling2(ctx)
+	return stopSampling(ctx)
 }
 
 // scrape
@@ -94,10 +94,6 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 	fmt.Println("env:", runtime.GOOS)
 	if runtime.GOOS == "windows" {
 		time.Sleep(5 * time.Second)
-
-		//for avgLoadValues.Load1 <= 0 && avgLoadValues.Load5 <= 0 && avgLoadValues.Load15 <= 0 {
-		//	avgLoadValues, err = s.load()
-		//}
 	}
 	avgLoadValues, err := s.load()
 
@@ -122,27 +118,4 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 	s.mb.RecordSystemCPULoadAverage15mDataPoint(now, avgLoadValues.Load15)
 
 	return s.mb.Emit(), nil
-}
-
-// unix based systems sample & compute load averages in the kernel, so nothing to do here
-func startSampling2(_ context.Context, _ *zap.Logger) error {
-	return nil
-}
-
-func stopSampling2(_ context.Context) error {
-	return nil
-}
-
-func getSampledLoadAverages2() (*load.AvgStat, error) {
-	fmt.Println("avg")
-	// all of them are 0?
-	//fmt.Println(runtime.GOOS)
-	//if runtime.GOOS == "windows" {
-	//	fmt.Println("Hello from Windows")
-	//	while(*load.AvgStat.Load5)
-	//	time.Sleep(6 * time.Second)
-	//}
-	//fmt.Println(load.Avg())
-	//fmt.Println("end avg")
-	return load.Avg()
 }
