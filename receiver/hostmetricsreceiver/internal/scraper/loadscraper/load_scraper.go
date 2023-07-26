@@ -125,6 +125,11 @@ func stopSampling2(_ context.Context) error {
 func getSampledLoadAverages2() (*load.AvgStat, error) {
 	fmt.Println("avg")
 	// all of them are 0?
+	fmt.Println(runtime.GOOS)
+	if runtime.GOOS == "windows" {
+		fmt.Println("Hello from Windows")
+		time.Sleep(6 * time.Second)
+	}
 	fmt.Println(load.Avg())
 	fmt.Println("end avg")
 	return load.Avg()
