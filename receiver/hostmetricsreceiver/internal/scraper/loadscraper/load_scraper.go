@@ -90,13 +90,16 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 
 	now := pcommon.NewTimestampFromTime(time.Now())
 	var avgLoadValues *load.AvgStat
-	avgLoadValues, err := s.load()
+	//avgLoadValues, err := s.load()
 	fmt.Println("env:", runtime.GOOS)
 	if runtime.GOOS == "windows" {
-		for avgLoadValues.Load1 <= 0 && avgLoadValues.Load5 <= 0 && avgLoadValues.Load15 <= 0 {
-			avgLoadValues, err = s.load()
-		}
+		time.Sleep(5 * time.Second)
+
+		//for avgLoadValues.Load1 <= 0 && avgLoadValues.Load5 <= 0 && avgLoadValues.Load15 <= 0 {
+		//	avgLoadValues, err = s.load()
+		//}
 	}
+	avgLoadValues, err := s.load()
 
 	if err != nil {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
