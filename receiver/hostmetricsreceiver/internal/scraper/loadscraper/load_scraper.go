@@ -55,6 +55,13 @@ func (s *scraper) start(ctx context.Context, _ component.Host) error {
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
 	fmt.Println(s.bootTime())
 
+	for {
+		numCPU := runtime.NumCPU()
+		if numCPU > 0 {
+			break
+		}
+		time.Sleep(0.5)
+	}
 	err = startSampling(ctx, s.settings.Logger)
 
 	var initErr *perfcounters.PerfCounterInitError
@@ -91,10 +98,10 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 	now := pcommon.NewTimestampFromTime(time.Now())
 	var avgLoadValues *load.AvgStat
 	//avgLoadValues, err := s.load()
-	fmt.Println("env:", runtime.GOOS)
-	if runtime.GOOS == "windows" {
-		time.Sleep(5 * time.Second)
-	}
+	//fmt.Println("env:", runtime.GOOS)
+	//if runtime.GOOS == "windows" {
+	//	time.Sleep(5 * time.Second)
+	//}
 	avgLoadValues, err := s.load()
 
 	if err != nil {
