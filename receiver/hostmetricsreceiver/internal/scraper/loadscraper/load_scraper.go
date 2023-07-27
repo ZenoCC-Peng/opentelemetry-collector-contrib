@@ -51,7 +51,7 @@ func (s *scraper) start(ctx context.Context, _ component.Host) error {
 
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
 
-	currentTime := time.Now()
+	//currentTime := time.Now()
 	// Define the future time for the range
 	// Add 5 mins to the current time
 	//futureTime := currentTime.Add(5 * time.Minute)
