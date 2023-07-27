@@ -60,7 +60,7 @@ func (s *scraper) start(ctx context.Context, _ component.Host) error {
 		if numCPU > 0 {
 			break
 		}
-		time.Sleep(0.5)
+		time.Sleep(5 * time.Second)
 	}
 	err = startSampling(ctx, s.settings.Logger)
 
