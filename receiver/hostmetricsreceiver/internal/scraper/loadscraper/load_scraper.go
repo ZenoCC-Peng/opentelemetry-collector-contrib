@@ -7,16 +7,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/collector/receiver/scrapererror"
 	"runtime"
 	"time"
 
+	"github.com/shirou/gopsutil/v3/common"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/load"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
+	"go.opentelemetry.io/collector/receiver/scrapererror"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/perfcounters"
@@ -33,42 +34,24 @@ type scraper struct {
 	skipScrape bool
 
 	// for mocking
-	bootTime func() (uint64, error)
-	load     func() (*load.AvgStat, error)
+	bootTime func(context.Context) (uint64, error)
+	load     func(context.Context) (*load.AvgStat, error)
 }
 
 // newLoadScraper creates a set of Load related metrics
 func newLoadScraper(_ context.Context, settings receiver.CreateSettings, cfg *Config) *scraper {
-	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages}
+	return &scraper{settings: settings, config: cfg, bootTime: host.BootTimeWithContext, load: getSampledLoadAverages}
 }
 
 // start
 func (s *scraper) start(ctx context.Context, _ component.Host) error {
-	bootTime, err := s.bootTime()
+	ctx = context.WithValue(ctx, common.EnvKey, s.config.EnvMap)
+	bootTime, err := s.bootTime(ctx)
 	if err != nil {
 		return err
 	}
 
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
-
-	//currentTime := time.Now()
-	// Define the future time for the range
-	// Add 5 mins to the current time
-	//futureTime := currentTime.Add(5 * time.Minute)
-	//timeRange := int(futureTime.Sub(currentTime).Minutes())
-	//maxTime := 5
-	//var numCPU int
-	//for numCPU < 0 {
-	//	numCPU = runtime.NumCPU()
-	//	time.Sleep(1 * time.Second)
-	//	if timeRange > maxTime {
-	//		// If it does, throw an error
-	//		err := errors.New("Exceeds the maximum waiting time")
-	//		fmt.Println("Error:", err)
-	//		return err
-	//	}
-	//}
-
 	err = startSampling(ctx, s.settings.Logger)
 
 	var initErr *perfcounters.PerfCounterInitError
@@ -96,39 +79,31 @@ func (s *scraper) shutdown(ctx context.Context) error {
 	return stopSampling(ctx)
 }
 
-// scrape
-func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
+func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	if s.skipScrape {
 		return pmetric.NewMetrics(), nil
 	}
 
 	now := pcommon.NewTimestampFromTime(time.Now())
+	ctx = context.WithValue(ctx, common.EnvKey, s.config.EnvMap)
 
-	var avgLoadValues *load.AvgStat
 	//avgLoadValues, err := s.load()
 	//fmt.Println("env:", runtime.GOOS)
 	//if runtime.GOOS == "windows" {
 	//	time.Sleep(5 * time.Second)
 	//}
-
-	avgLoadValues, err := s.load()
+	avgLoadValues, err := s.load(ctx)
 	if err != nil {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 	}
-
 	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
-		avgLoadValues, err = s.load()
+		avgLoadValues, err = s.load(ctx)
 		if err != nil {
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
 
 		time.Sleep(1 * time.Second)
 	}
-	//time.Sleep(5 * time.Second)
-	//avgLoadValues, err := s.load()
-	//if err != nil {
-	//	return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
-	//}
 
 	if s.config.CPUAverage {
 		divisor := float64(runtime.NumCPU())
