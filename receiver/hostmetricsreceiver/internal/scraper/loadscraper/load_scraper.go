@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/collector/receiver/scrapererror"
 	"runtime"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
-	"go.opentelemetry.io/collector/receiver/scrapererror"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/perfcounters"
@@ -92,24 +92,24 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 	//	time.Sleep(5 * time.Second)
 	//}
 
-	avgLoadValues, err := s.load()
-	if err != nil {
-		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
-	}
-
-	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
-		avgLoadValues, err = s.load()
-		if err != nil {
-			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-	//time.Sleep(1 * time.Second)
 	//avgLoadValues, err := s.load()
 	//if err != nil {
 	//	return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 	//}
+
+	//for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
+	//	avgLoadValues, err = s.load()
+	//	if err != nil {
+	//		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	//	}
+	//
+	//	time.Sleep(1 * time.Second)
+	//}
+	time.Sleep(5 * time.Second)
+	avgLoadValues, err := s.load()
+	if err != nil {
+		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	}
 
 	if s.config.CPUAverage {
 		divisor := float64(runtime.NumCPU())
