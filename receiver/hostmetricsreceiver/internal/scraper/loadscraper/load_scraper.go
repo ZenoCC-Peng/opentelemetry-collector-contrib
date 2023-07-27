@@ -50,6 +50,25 @@ func (s *scraper) start(ctx context.Context, _ component.Host) error {
 	}
 
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
+
+	currentTime := time.Now()
+	// Define the future time for the range
+	// Add 5 mins to the current time
+	futureTime := currentTime.Add(5 * time.Minute)
+	timeRange := int(futureTime.Sub(currentTime).Minutes())
+	maxTime := 5
+	var numCPU int
+	for numCPU < 0 {
+		numCPU = runtime.NumCPU()
+		time.Sleep(1 * time.Second)
+		if timeRange > maxTime {
+			// If it does, throw an error
+			err := errors.New("Exceeds the maximum waiting time")
+			fmt.Println("Error:", err)
+			return err
+		}
+	}
+
 	err = startSampling(ctx, s.settings.Logger)
 
 	var initErr *perfcounters.PerfCounterInitError
@@ -97,14 +116,14 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 	}
 
-	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
-		avgLoadValues, err = s.load()
-		if err != nil {
-			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
-		}
-
-		time.Sleep(1 * time.Second)
-	}
+	//for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
+	//	avgLoadValues, err = s.load()
+	//	if err != nil {
+	//		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	//	}
+	//
+	//	time.Sleep(1 * time.Second)
+	//}
 	//time.Sleep(5 * time.Second)
 	//avgLoadValues, err := s.load()
 	//if err != nil {
