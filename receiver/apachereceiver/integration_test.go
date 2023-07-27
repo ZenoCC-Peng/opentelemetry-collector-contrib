@@ -1,104 +1,149 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build integration
-// +build integration
-
-package apachereceiver
+package loadscraper
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"net/http"
-	"path/filepath"
-	"strings"
+	"errors"
+	"runtime"
 	"testing"
-	"time"
 
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"go.opentelemetry.io/collector/component"
+	"github.com/shirou/gopsutil/v3/load"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/receiver/receivertest"
+	"go.opentelemetry.io/collector/receiver/scrapererror"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/scraperinttest"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/loadscraper/internal/metadata"
 )
 
-const apachePort = "80"
+const (
+	testStandard = "Standard"
+	testAverage  = "PerCPUEnabled"
+	bootTime     = 100
+)
 
-func TestIntegration(t *testing.T) {
-	scraperinttest.NewIntegrationTest(
-		NewFactory(),
-		scraperinttest.WithContainerRequest(
-			testcontainers.ContainerRequest{
-				Image: "httpd:2.4",
-				Files: []testcontainers.ContainerFile{{
-					HostFilePath:      filepath.Join("testdata", "integration", "httpd.conf"),
-					ContainerFilePath: "/usr/local/apache2/conf/httpd.conf",
-					FileMode:          700,
-				}},
-				ExposedPorts: []string{apachePort},
-				WaitingFor:   waitStrategy{},
-			}),
-		scraperinttest.WithCustomConfig(
-			func(t *testing.T, cfg component.Config, ci *scraperinttest.ContainerInfo) {
-				rCfg := cfg.(*Config)
-				rCfg.ScraperControllerSettings.CollectionInterval = 100 * time.Millisecond
-				rCfg.Endpoint = fmt.Sprintf("http://%s:%s/server-status?auto", ci.Host(t), ci.MappedPort(t, apachePort))
-			}),
-		scraperinttest.WithCompareOptions(
-			pmetrictest.IgnoreResourceAttributeValue("apache.server.port"),
-			pmetrictest.IgnoreMetricValues(),
-			pmetrictest.IgnoreMetricDataPointsOrder(),
-			pmetrictest.IgnoreStartTimestamp(),
-			pmetrictest.IgnoreTimestamp(),
-		),
-	).Run(t)
+// Skips test without applying unused rule
+var skip = func(t *testing.T, why string) {
+	t.Skip(why)
 }
 
-type waitStrategy struct{}
-
-func (ws waitStrategy) WaitUntilReady(ctx context.Context, st wait.StrategyTarget) error {
-	if err := wait.ForListeningPort(apachePort).
-		WithStartupTimeout(time.Minute).
-		WaitUntilReady(ctx, st); err != nil {
-		return err
+func TestScrape(t *testing.T) {
+	skip(t, "Flaky test. See https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/10030")
+	type testCase struct {
+		name         string
+		bootTimeFunc func() (uint64, error)
+		loadFunc     func() (*load.AvgStat, error)
+		expectedErr  string
+		saveMetrics  bool
+		config       *Config
 	}
 
-	hostname, err := st.Host(ctx)
-	if err != nil {
-		return err
+	testCases := []testCase{
+		{
+			name:        testStandard,
+			saveMetrics: true,
+			config: &Config{
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+			},
+		},
+		{
+			name:        testAverage,
+			saveMetrics: true,
+			config: &Config{
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+				CPUAverage:           true,
+			},
+			bootTimeFunc: func() (uint64, error) { return bootTime, nil },
+		},
+		{
+			name:     "Load Error",
+			loadFunc: func() (*load.AvgStat, error) { return nil, errors.New("err1") },
+			config: &Config{
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+			},
+			expectedErr: "err1",
+		},
 	}
-	port, err := st.MappedPort(ctx, apachePort)
-	if err != nil {
-		return err
+	results := make(map[string]pmetric.MetricSlice)
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			scraper := newLoadScraper(context.Background(), receivertest.NewNopCreateSettings(), test.config)
+			if test.loadFunc != nil {
+				scraper.load = test.loadFunc
+			}
+			if test.bootTimeFunc != nil {
+				scraper.bootTime = test.bootTimeFunc
+			}
+
+			err := scraper.start(context.Background(), componenttest.NewNopHost())
+			require.NoError(t, err, "Failed to initialize load scraper: %v", err)
+			defer func() { assert.NoError(t, scraper.shutdown(context.Background())) }()
+
+			md, err := scraper.scrape(context.Background())
+			if test.expectedErr != "" {
+				assert.EqualError(t, err, test.expectedErr)
+
+				isPartial := scrapererror.IsPartialScrapeError(err)
+				assert.True(t, isPartial)
+				if isPartial {
+					var scraperErr scrapererror.PartialScrapeError
+					require.ErrorAs(t, err, &scraperErr)
+					assert.Equal(t, metricsLen, scraperErr.Failed)
+				}
+
+				return
+			}
+			require.NoError(t, err, "Failed to scrape metrics: %v", err)
+
+			if test.bootTimeFunc != nil {
+				actualBootTime, err := scraper.bootTime()
+				assert.Nil(t, err)
+				assert.Equal(t, uint64(bootTime), actualBootTime)
+			}
+			// expect 3 metrics
+			assert.Equal(t, 3, md.MetricCount())
+
+			metrics := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+			// expect a single datapoint for 1m, 5m & 15m load metrics
+			assertMetricHasSingleDatapoint(t, metrics.At(0), "system.cpu.load_average.15m")
+			assertMetricHasSingleDatapoint(t, metrics.At(1), "system.cpu.load_average.1m")
+			assertMetricHasSingleDatapoint(t, metrics.At(2), "system.cpu.load_average.5m")
+
+			internal.AssertSameTimeStampForAllMetrics(t, metrics)
+
+			// save metrics for additional tests if flag is enabled
+			if test.saveMetrics {
+				results[test.name] = metrics
+			}
+		})
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(5 * time.Second):
-			return fmt.Errorf("server startup problem")
-		case <-time.After(100 * time.Millisecond):
-			resp, err := http.Get(fmt.Sprintf("http://%s:%s/server-status?auto", hostname, port.Port()))
-			if err != nil {
-				continue
-			}
+	// Additional test for average per CPU
+	numCPU := runtime.NumCPU()
+	for i := 0; i < results[testStandard].Len(); i++ {
+		assertCompareAveragePerCPU(t, results[testAverage].At(i), results[testStandard].At(i), numCPU)
+	}
+}
 
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				continue
-			}
+func assertMetricHasSingleDatapoint(t *testing.T, metric pmetric.Metric, expectedName string) {
+	assert.Equal(t, expectedName, metric.Name())
+	assert.Equal(t, 1, metric.Gauge().DataPoints().Len())
+}
 
-			if resp.Body.Close() != nil {
-				continue
-			}
-
-			// The server needs a moment to generate some stats
-			if strings.Contains(string(body), "ReqPerSec") {
-				return nil
-			}
-		}
+func assertCompareAveragePerCPU(t *testing.T, average pmetric.Metric, standard pmetric.Metric, numCPU int) {
+	valAverage := average.Gauge().DataPoints().At(0).DoubleValue()
+	valStandard := standard.Gauge().DataPoints().At(0).DoubleValue()
+	if numCPU == 1 {
+		// For hardware with only 1 cpu, results must be very close
+		assert.InDelta(t, valAverage, valStandard, 0.1)
+	} else {
+		// For hardward with multiple CPU, average per cpu is fatally less than standard
+		assert.Less(t, valAverage, valStandard)
 	}
 }

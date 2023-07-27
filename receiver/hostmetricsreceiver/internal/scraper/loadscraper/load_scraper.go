@@ -42,26 +42,14 @@ func newLoadScraper(_ context.Context, settings receiver.CreateSettings, cfg *Co
 	return &scraper{settings: settings, config: cfg, bootTime: host.BootTime, load: getSampledLoadAverages}
 }
 
-// start update start, setup time
-// evidennce,
+// start
 func (s *scraper) start(ctx context.Context, _ component.Host) error {
 	bootTime, err := s.bootTime()
-	fmt.Println(bootTime)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("bg", context.Background())
 	s.mb = metadata.NewMetricsBuilder(s.config.MetricsBuilderConfig, s.settings, metadata.WithStartTime(pcommon.Timestamp(bootTime*1e9)))
-	fmt.Println(s.bootTime())
-
-	for {
-		numCPU := runtime.NumCPU()
-		if numCPU > 0 {
-			break
-		}
-		time.Sleep(5 * time.Second)
-	}
 	err = startSampling(ctx, s.settings.Logger)
 
 	var initErr *perfcounters.PerfCounterInitError
@@ -96,30 +84,44 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 	}
 
 	now := pcommon.NewTimestampFromTime(time.Now())
+
 	var avgLoadValues *load.AvgStat
 	//avgLoadValues, err := s.load()
 	//fmt.Println("env:", runtime.GOOS)
 	//if runtime.GOOS == "windows" {
 	//	time.Sleep(5 * time.Second)
 	//}
-	avgLoadValues, err := s.load()
 
+	avgLoadValues, err := s.load()
 	if err != nil {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 	}
 
+	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
+		avgLoadValues, err = s.load()
+		if err != nil {
+			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+	//time.Sleep(1 * time.Second)
+	//avgLoadValues, err := s.load()
+	//if err != nil {
+	//	return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	//}
+
 	if s.config.CPUAverage {
 		divisor := float64(runtime.NumCPU())
-		fmt.Println("Divisor", runtime.NumCPU())
 		avgLoadValues.Load1 /= divisor
 		avgLoadValues.Load5 /= divisor
 		avgLoadValues.Load15 /= divisor
-		// is 0 avgLoadValues.Load1 , avgLoadValues.Load5 , avgLoadValues.Load15
 	}
 
-	fmt.Println("Load1", avgLoadValues.Load1)
-	fmt.Println("Load5", avgLoadValues.Load5)
-	fmt.Println("Load15", avgLoadValues.Load15)
+	fmt.Println("load1:", avgLoadValues.Load1)
+	fmt.Println("load5:", avgLoadValues.Load5)
+	fmt.Println("load15:", avgLoadValues.Load15)
+
 	s.mb.RecordSystemCPULoadAverage1mDataPoint(now, avgLoadValues.Load1)
 	s.mb.RecordSystemCPULoadAverage5mDataPoint(now, avgLoadValues.Load5)
 	s.mb.RecordSystemCPULoadAverage15mDataPoint(now, avgLoadValues.Load15)
