@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/collector/receiver/scrapererror"
 	"runtime"
 	"time"
 
@@ -105,11 +104,11 @@ func (s *scraper) scrape(_ context.Context) (pmetric.Metrics, error) {
 	//
 	//	time.Sleep(1 * time.Second)
 	//}
-	time.Sleep(5 * time.Second)
-	avgLoadValues, err := s.load()
-	if err != nil {
-		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
-	}
+	//time.Sleep(5 * time.Second)
+	//avgLoadValues, err := s.load()
+	//if err != nil {
+	//	return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	//}
 
 	if s.config.CPUAverage {
 		divisor := float64(runtime.NumCPU())
