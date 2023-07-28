@@ -6,7 +6,6 @@ package loadscraper // import "github.com/open-telemetry/opentelemetry-collector
 import (
 	"context"
 	"errors"
-	"fmt"
 	"runtime"
 	"time"
 
@@ -87,15 +86,14 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	now := pcommon.NewTimestampFromTime(time.Now())
 	ctx = context.WithValue(ctx, common.EnvKey, s.config.EnvMap)
 
-	//avgLoadValues, err := s.load()
-	//fmt.Println("env:", runtime.GOOS)
-	//if runtime.GOOS == "windows" {
-	//	time.Sleep(5 * time.Second)
-	//}
 	avgLoadValues, err := s.load(ctx)
 	if err != nil {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 	}
+
+	// Employing a for loop to load values, as Windows environments may need to wait for a specific duration to acquire data.
+	// go routine ?
+	startTime := time.Now()
 	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
 		avgLoadValues, err = s.load(ctx)
 		if err != nil {
@@ -103,6 +101,10 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 		}
 
 		time.Sleep(1 * time.Second)
+		// If the operation exceeds the allocated time, the function returns an "overtime error."
+		if time.Since(startTime) > 5*time.Minute {
+			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(errors.New("Exceeds time to load data."), metricsLen)
+		}
 	}
 
 	if s.config.CPUAverage {
@@ -111,10 +113,6 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 		avgLoadValues.Load5 /= divisor
 		avgLoadValues.Load15 /= divisor
 	}
-
-	fmt.Println("load1:", avgLoadValues.Load1)
-	fmt.Println("load5:", avgLoadValues.Load5)
-	fmt.Println("load15:", avgLoadValues.Load15)
 
 	s.mb.RecordSystemCPULoadAverage1mDataPoint(now, avgLoadValues.Load1)
 	s.mb.RecordSystemCPULoadAverage5mDataPoint(now, avgLoadValues.Load5)
