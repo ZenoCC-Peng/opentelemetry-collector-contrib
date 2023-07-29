@@ -99,7 +99,7 @@ func TestStartTimestamp(t *testing.T) {
 				Interval: createPtrFloat64(0),
 			},
 			metricDescriptorType: GaugeMetricType,
-			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Time{}),
+			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Unix(0, 0)),
 		},
 		{
 			name: "metric type non-cumulative gauge int64",
@@ -108,7 +108,7 @@ func TestStartTimestamp(t *testing.T) {
 				Interval: createPtrFloat64(0),
 			},
 			metricDescriptorType: GaugeMetricType,
-			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Time{}),
+			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Unix(0, 0)),
 		},
 		{
 			name: "metric type non-cumulativegauge double",
@@ -117,7 +117,7 @@ func TestStartTimestamp(t *testing.T) {
 				Interval: createPtrFloat64(0),
 			},
 			metricDescriptorType: GaugeMetricType,
-			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Time{}),
+			wantStartTimestamp:   pcommon.NewTimestampFromTime(time.Unix(0, 0)),
 		},
 	}
 	for _, tc := range tests {

@@ -47,19 +47,19 @@ func (cdr *collectDRecord) isEvent() bool {
 }
 
 func (cdr *collectDRecord) protoTime() pcommon.Timestamp {
+	// Return 1970-01-01 00:00:00 +0000 UTC.
 	if cdr.Time == nil {
-		return pcommon.NewTimestampFromTime(time.Time{})
+		return pcommon.NewTimestampFromTime(time.Unix(0, 0))
 	}
 	ts := time.Unix(0, int64(float64(time.Second)**cdr.Time))
 	return pcommon.NewTimestampFromTime(ts)
 }
 
 func (cdr *collectDRecord) startTimestamp(metricType TargetMetricType) pcommon.Timestamp {
-
 	if metricType == CumulativeMetricType {
 		return pcommon.NewTimestampFromTime(time.Unix(0, int64((*cdr.Time-*cdr.Interval)*float64(time.Second))))
 	}
-	return pcommon.NewTimestampFromTime(time.Time{})
+	return pcommon.NewTimestampFromTime(time.Unix(0, 0))
 }
 
 func (cdr *collectDRecord) appendToMetrics(scopeMetrics pmetric.ScopeMetrics, defaultLabels map[string]string) error {
