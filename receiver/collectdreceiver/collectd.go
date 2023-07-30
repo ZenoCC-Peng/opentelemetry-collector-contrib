@@ -184,12 +184,12 @@ func (r *collectDRecord) getReasonableMetricName(index int, attrs map[string]str
 }
 
 // pointTypeInstance extracts information from the TypeInstance field and appends to the metric name when possible.
-func (r *collectDRecord) pointTypeInstance(attrs map[string]string, parts []byte) []byte {
-	if isNilOrEmpty(r.TypeInstance) {
+func (cdr *collectDRecord) pointTypeInstance(attrs map[string]string, parts []byte) []byte {
+	if isNilOrEmpty(cdr.TypeInstance) {
 		return parts
 	}
 
-	instanceName, extractedAttrs := LabelsFromName(r.TypeInstance)
+	instanceName, extractedAttrs := LabelsFromName(cdr.TypeInstance)
 	if instanceName != "" {
 		if len(parts) > 0 {
 			parts = append(parts, '.')
