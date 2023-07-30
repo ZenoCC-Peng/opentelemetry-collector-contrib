@@ -158,26 +158,26 @@ func setDataPoint(typ string, metric pmetric.Metric) pmetric.NumberDataPoint {
 // getReasonableMetricName creates metrics names by joining them (if non empty) type.typeinstance
 // if there are more than one dsname append .dsname for the particular uint. if there's only one it
 // becomes a dimension.
-func (r *collectDRecord) getReasonableMetricName(index int, attrs map[string]string) (string, bool) {
+func (cdr *collectDRecord) getReasonableMetricName(index int, attrs map[string]string) (string, bool) {
 	usedDsName := false
 	capacity := 0
-	if r.TypeS != nil {
-		capacity += len(*r.TypeS)
+	if cdr.TypeS != nil {
+		capacity += len(*cdr.TypeS)
 	}
-	if r.TypeInstance != nil {
-		capacity += len(*r.TypeInstance)
+	if cdr.TypeInstance != nil {
+		capacity += len(*cdr.TypeInstance)
 	}
 	parts := make([]byte, 0, capacity)
 
-	if !isNilOrEmpty(r.TypeS) {
-		parts = append(parts, *r.TypeS...)
+	if !isNilOrEmpty(cdr.TypeS) {
+		parts = append(parts, *cdr.TypeS...)
 	}
-	parts = r.pointTypeInstance(attrs, parts)
-	if r.Dsnames != nil && !isNilOrEmpty(r.Dsnames[index]) && len(r.Dsnames) > 1 {
+	parts = cdr.pointTypeInstance(attrs, parts)
+	if cdr.Dsnames != nil && !isNilOrEmpty(cdr.Dsnames[index]) && len(cdr.Dsnames) > 1 {
 		if len(parts) > 0 {
 			parts = append(parts, '.')
 		}
-		parts = append(parts, *r.Dsnames[index]...)
+		parts = append(parts, *cdr.Dsnames[index]...)
 		usedDsName = true
 	}
 	return string(parts), usedDsName
