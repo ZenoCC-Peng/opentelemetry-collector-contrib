@@ -92,7 +92,6 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	}
 
 	// Employing a for loop to load values, as Windows environments may need to wait for a specific duration to acquire data.
-	// go routine ?
 	startTime := time.Now()
 	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
 		avgLoadValues, err = s.load(ctx)
