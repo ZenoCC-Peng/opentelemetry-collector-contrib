@@ -24,6 +24,8 @@ import (
 )
 
 const metricsLen = 3
+const sleepTimeSecs = 5
+const overTimeMins = 5
 
 // scraper for Load Metrics
 type scraper struct {
@@ -99,9 +101,9 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(sleepTimeSecs * time.Second)
 		// If the operation exceeds the allocated time, the function returns an "overtime error."
-		if time.Since(startTime) > 5*time.Minute {
+		if time.Since(startTime) > overTimeMins*time.Minute {
 			err := errors.New("exceeds time to load data")
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
