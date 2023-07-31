@@ -101,7 +101,7 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	//// Employing a for loop to load values, as Windows environments may need to wait for a specific duration to acquire data.
 	startTime := time.Now()
 	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
-		time.Sleep(sleepTimeSecs * time.Second)
+		time.Sleep(sleepTimeSecs * time.Millisecond)
 		avgLoadValues, err = s.load(ctx)
 		if err != nil {
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
