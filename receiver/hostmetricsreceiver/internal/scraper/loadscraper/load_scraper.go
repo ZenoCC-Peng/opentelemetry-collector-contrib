@@ -102,7 +102,8 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 		time.Sleep(1 * time.Second)
 		// If the operation exceeds the allocated time, the function returns an "overtime error."
 		if time.Since(startTime) > 5*time.Minute {
-			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(errors.New("Exceeds time to load data."), metricsLen)
+			err := errors.New("Exceeds time to load data.")
+			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
 	}
 
