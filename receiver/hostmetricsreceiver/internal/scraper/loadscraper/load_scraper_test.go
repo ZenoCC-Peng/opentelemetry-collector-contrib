@@ -39,13 +39,6 @@ func TestScrape(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:        testStandard,
-			saveMetrics: true,
-			config: &Config{
-				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
-			},
-		},
-		{
 			name:        testAverage,
 			saveMetrics: true,
 			config: &Config{
@@ -53,6 +46,13 @@ func TestScrape(t *testing.T) {
 				CPUAverage:           true,
 			},
 			bootTimeFunc: func(context.Context) (uint64, error) { return bootTime, nil },
+		},
+		{
+			name:        testStandard,
+			saveMetrics: true,
+			config: &Config{
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+			},
 		},
 		{
 			name:     "Load Error",
