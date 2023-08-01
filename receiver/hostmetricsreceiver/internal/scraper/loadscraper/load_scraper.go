@@ -93,8 +93,8 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
 		time.Sleep(30 * time.Second)
 		avgLoadValues, err = s.load(ctx)
-		fmt.Println(avgLoadValues.Load1, avgLoadValues.Load5, avgLoadValues.Load15)
 	}
+	fmt.Println(avgLoadValues.Load1, avgLoadValues.Load5, avgLoadValues.Load15)
 
 	if err != nil {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
