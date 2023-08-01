@@ -105,7 +105,7 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
 		if time.Since(startTime) > overTimeMins*time.Minute {
-			err := errors.New("exceeds time to load data")
+			err = errors.New("exceeds time to load data")
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
 	}
