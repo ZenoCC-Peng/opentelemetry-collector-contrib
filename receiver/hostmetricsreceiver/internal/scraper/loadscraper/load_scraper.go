@@ -99,19 +99,18 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
 		time.Sleep(sleepTimeSecs * time.Second)
 		// If the operation exceeds the allocated time, the function returns an "overtime error."
+		avgLoadValues, err = s.load(ctx)
 		if time.Since(startTime) > overTimeMins*time.Minute {
 			err := errors.New("exceeds time to load data")
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
-
-		avgLoadValues, err = s.load(ctx)
-		// load again to recalculate time
-		avgLoadValues, err = s.load(ctx)
-
 		if err != nil {
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
 	}
+
+	// load again to recalculate time
+	avgLoadValues, err = s.load(ctx)
 
 	if s.config.CPUAverage {
 		divisor := float64(runtime.NumCPU())
