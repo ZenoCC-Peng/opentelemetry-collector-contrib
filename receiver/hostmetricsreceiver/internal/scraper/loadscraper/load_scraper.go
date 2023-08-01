@@ -90,7 +90,7 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	ctx = context.WithValue(ctx, common.EnvKey, s.config.EnvMap)
 
 	avgLoadValues, err := s.load(ctx)
-	if avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
+	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
 		time.Sleep(30 * time.Second)
 		avgLoadValues, err = s.load(ctx)
 		fmt.Println(avgLoadValues.Load1, avgLoadValues.Load5, avgLoadValues.Load15)
