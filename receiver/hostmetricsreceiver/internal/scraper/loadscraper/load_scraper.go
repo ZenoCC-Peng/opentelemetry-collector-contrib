@@ -6,6 +6,7 @@ package loadscraper // import "github.com/open-telemetry/opentelemetry-collector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
 	"time"
 
@@ -92,6 +93,7 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	if avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
 		time.Sleep(30 * time.Second)
 		avgLoadValues, err = s.load(ctx)
+		fmt.Println(avgLoadValues.Load1, avgLoadValues.Load5, avgLoadValues.Load15)
 	}
 
 	if err != nil {
