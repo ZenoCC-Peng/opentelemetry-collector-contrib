@@ -95,20 +95,20 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	}
 
 	//// Employing a for loop to load values, as Windows environments may need to wait for a specific duration to acquire data.
-	startTime := time.Now()
-	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
-		avgLoadValues, err = s.load(ctx)
-		if err != nil {
-			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
-		}
-
-		time.Sleep(sleepTimeSecs * time.Second)
-		// If the operation exceeds the allocated time, the function returns an "overtime error."
-		if time.Since(startTime) > overTimeMins*time.Minute {
-			err := errors.New("exceeds time to load data")
-			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
-		}
-	}
+	//startTime := time.Now()
+	//for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
+	//	avgLoadValues, err = s.load(ctx)
+	//	if err != nil {
+	//		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	//	}
+	//
+	//	time.Sleep(sleepTimeSecs * time.Second)
+	//	// If the operation exceeds the allocated time, the function returns an "overtime error."
+	//	if time.Since(startTime) > overTimeMins*time.Minute {
+	//		err := errors.New("exceeds time to load data")
+	//		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	//	}
+	//}
 
 	if s.config.CPUAverage {
 		divisor := float64(runtime.NumCPU())
