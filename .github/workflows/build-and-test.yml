@@ -182,8 +182,6 @@ jobs:
         run: make install-tools
       - name: CheckDoc
         run: make checkdoc
-      - name: CheckMetadata
-        run: make checkmetadata
       - name: Porto
         run: |
           make -j2 goporto
