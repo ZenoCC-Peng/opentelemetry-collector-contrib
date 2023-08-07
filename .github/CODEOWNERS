@@ -112,6 +112,7 @@ extension/storage/filestorage/                           @open-telemetry/collect
 
 internal/aws/                                            @open-telemetry/collector-contrib-approvers @Aneurysm9 @mxiamxia
 internal/coreinternal/                                   @open-telemetry/collector-contrib-approvers @open-telemetry/collector-approvers
+internal/datadog/                                        @open-telemetry/collector-contrib-approvers @mx-psi @gbbr @dineshg13
 internal/docker/                                         @open-telemetry/collector-contrib-approvers @rmfitzpatrick @jamesmoessis
 internal/filter/                                         @open-telemetry/collector-contrib-approvers @open-telemetry/collector-approvers
 internal/k8sconfig/                                      @open-telemetry/collector-contrib-approvers @dmitryax
@@ -195,6 +196,7 @@ receiver/filereceiver/                                   @open-telemetry/collect
 receiver/filestatsreceiver/                              @open-telemetry/collector-contrib-approvers @atoulme
 receiver/flinkmetricsreceiver/                           @open-telemetry/collector-contrib-approvers @jonathanwamsley @djaglowski
 receiver/fluentforwardreceiver/                          @open-telemetry/collector-contrib-approvers @dmitryax
+receiver/gitproviderreceiver/                            @open-telemetry/collector-contrib-approvers @adrielp @astencel-sumo
 receiver/googlecloudpubsubreceiver/                      @open-telemetry/collector-contrib-approvers @alexvanboxel
 receiver/googlecloudspannerreceiver/                     @open-telemetry/collector-contrib-approvers @architjugran @varunraiko @kiranmayib
 receiver/haproxyreceiver/                                @open-telemetry/collector-contrib-approvers @atoulme @MovieStoreGuy
@@ -223,7 +225,6 @@ receiver/oracledbreceiver/                               @open-telemetry/collect
 receiver/otlpjsonfilereceiver/                           @open-telemetry/collector-contrib-approvers @djaglowski @atoulme
 receiver/podmanreceiver/                                 @open-telemetry/collector-contrib-approvers @rogercoll
 receiver/postgresqlreceiver/                             @open-telemetry/collector-contrib-approvers @djaglowski
-receiver/prometheusexecreceiver/                         @open-telemetry/collector-contrib-approvers @dmitryax
 receiver/prometheusreceiver/                             @open-telemetry/collector-contrib-approvers @Aneurysm9 @dashpole
 receiver/pulsarreceiver/                                 @open-telemetry/collector-contrib-approvers @dmitryax @dao-jun
 receiver/purefareceiver/                                 @open-telemetry/collector-contrib-approvers @jpkrohling @dgoscn @chrroberts-pure
