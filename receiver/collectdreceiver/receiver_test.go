@@ -30,6 +30,16 @@ type wantedBody struct {
 	Value      float64
 }
 
+var endpoint = "localhost:8081"
+
+type testCase struct {
+	name         string
+	queryParams  string
+	requestBody  string
+	responseCode int
+	wantData     []pmetric.Metrics
+}
+
 func TestNewReceiver(t *testing.T) {
 	type args struct {
 		addr         string
