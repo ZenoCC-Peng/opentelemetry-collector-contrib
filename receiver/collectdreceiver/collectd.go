@@ -15,18 +15,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/common/sanitize"
 )
 
-type TargetMetricType string
-
-const (
-	GaugeMetricType      = TargetMetricType("gauge")
-	CumulativeMetricType = TargetMetricType("cumulative")
-)
-
-const (
-	collectDMetricDerive  = "derive"
-	collectDMetricCounter = "counter"
-)
-
 type collectDRecord struct {
 	Dsnames        []*string              `json:"dsnames"`
 	Dstypes        []*string              `json:"dstypes"`
@@ -62,8 +50,8 @@ func (cdr *collectDRecord) protoTime() pcommon.Timestamp {
 	return pcommon.NewTimestampFromTime(ts)
 }
 
-func (cdr *collectDRecord) startTimestamp(metricType TargetMetricType) pcommon.Timestamp {
-	if metricType == CumulativeMetricType {
+func (cdr *collectDRecord) startTimestamp(metricType string) pcommon.Timestamp {
+	if metricType == "cumulative" {
 		return pcommon.NewTimestampFromTime(time.Unix(0, int64((*cdr.Time-*cdr.Interval)*float64(time.Second))))
 	}
 	return pcommon.NewTimestampFromTime(time.Unix(0, 0))
@@ -155,7 +143,7 @@ func (cdr *collectDRecord) setMetric(createMetric createMetricInfo, atr pcommon.
 func setDataPoint(typ string, metric pmetric.Metric) pmetric.NumberDataPoint {
 	var dataPoint pmetric.NumberDataPoint
 	switch typ {
-	case collectDMetricCounter, collectDMetricDerive:
+	case "derive", "counter":
 		sum := metric.SetEmptySum()
 		sum.SetIsMonotonic(true)
 		dataPoint = sum.DataPoints().AppendEmpty()
