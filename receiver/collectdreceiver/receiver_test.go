@@ -71,16 +71,7 @@ func TestNewReceiver(t *testing.T) {
 }
 
 func TestCollectDServer(t *testing.T) {
-	const endpoint = "localhost:8081"
 	defaultAttrsPrefix := "dap_"
-
-	type testCase struct {
-		name         string
-		queryParams  string
-		requestBody  string
-		responseCode int
-		wantData     []pmetric.Metrics
-	}
 
 	wantedRequestBody := wantedBody{
 		Name: "memory.free",
@@ -172,6 +163,33 @@ func TestCollectDServer(t *testing.T) {
 			assertMetricsAreEqual(t, tt.wantData, mds)
 		})
 	}
+	testInvalidMethod(t, sink)
+}
+
+func testInvalidMethod(t *testing.T, sink *consumertest.MetricsSink) {
+
+	testInvlidMethodCase := testCase{
+		name:         "invalid-request-body",
+		requestBody:  `invalid-body`,
+		responseCode: 400,
+		wantData:     []pmetric.Metrics{},
+	}
+
+	t.Run(testInvlidMethodCase.name, func(t *testing.T) {
+		sink.Reset()
+		req, err := http.NewRequest(
+			"GET",
+			"http://"+endpoint+"?"+testInvlidMethodCase.queryParams,
+			bytes.NewBuffer([]byte(testInvlidMethodCase.requestBody)),
+		)
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		assert.Equal(t, testInvlidMethodCase.responseCode, resp.StatusCode)
+		defer resp.Body.Close()
+	})
 }
 
 func createWantedMetrics(wantedBody wantedBody) pmetric.Metrics {
