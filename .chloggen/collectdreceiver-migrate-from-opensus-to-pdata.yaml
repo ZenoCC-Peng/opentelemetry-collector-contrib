@@ -12,4 +12,3 @@ component: recevier/collectdreceiver
 note: Migrate from opencensus to pdata, change collectd, test to match pdata format.
 
 # Mandatory: One or more tracking issues related to the change. You can use the PR number here if no issue exists.
-issues: [20760]
