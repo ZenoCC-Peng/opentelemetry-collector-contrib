@@ -9,7 +9,6 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && github.repository_owner == 'open-telemetry' }}
     steps:
       - uses: actions/checkout@v3
-
       - name: Run ping-codeowners-prs.sh
         run: ./.github/workflows/scripts/ping-codeowners-prs.sh
         env:
