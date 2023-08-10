@@ -1,9 +1,11 @@
 name: build-and-test-windows
 on:
+  # maybe modify
   push:
     branches:
       - 'main'
       - 'releases/**'
+      - 'scraper-flaky4-all'
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
   pull_request:

@@ -9,7 +9,6 @@ jobs:
     if: ${{ github.repository_owner == 'open-telemetry' }}
     steps:
       - uses: actions/checkout@v3
-    
       - name: Run ping-codeowners-issues.sh
         run: ./.github/workflows/scripts/ping-codeowners-issues.sh
         env:

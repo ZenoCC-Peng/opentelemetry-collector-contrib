@@ -78,8 +78,11 @@ func (s *scraper) shutdown(ctx context.Context) error {
 	return stopSampling(ctx)
 }
 
-// scrape
 func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
+
+	var sleepTimeSecs = 5
+	var overTimeMins = 5
+
 	if s.skipScrape {
 		return pmetric.NewMetrics(), nil
 	}
@@ -88,8 +91,25 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 	ctx = context.WithValue(ctx, common.EnvKey, s.config.EnvMap)
 
 	avgLoadValues, err := s.load(ctx)
+
 	if err != nil {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+	}
+
+	// Employing a for loop to load values, as Windows environments may need to wait 5 seconds to acquire data.
+	startTime := time.Now()
+	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
+		avgLoadValues, err = s.load(ctx)
+		if err != nil {
+			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+		}
+
+		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
+		// If the operation exceeds the allocated time, returns "overtime error."
+		if time.Since(startTime) > time.Duration(overTimeMins)*time.Minute {
+			err := errors.New("exceeds time to load data")
+			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
+		}
 	}
 
 	if s.config.CPUAverage {
