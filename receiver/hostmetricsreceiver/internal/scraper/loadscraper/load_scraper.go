@@ -24,8 +24,6 @@ import (
 )
 
 const metricsLen = 3
-const sleepTimeSecs = 5
-const overTimeMins = 5
 
 // scraper for Load Metrics
 type scraper struct {
@@ -81,6 +79,10 @@ func (s *scraper) shutdown(ctx context.Context) error {
 }
 
 func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
+
+	var sleepTimeSecs = 5
+	var overTimeMins = 5
+
 	if s.skipScrape {
 		return pmetric.NewMetrics(), nil
 	}
@@ -94,7 +96,7 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 		return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 	}
 
-	// Employing a for loop to load values, as Windows environments may need to wait for a specific duration to acquire data.
+	// Employing a for loop to load values, as Windows environments may need to wait 5 seconds to acquire data.
 	startTime := time.Now()
 	for avgLoadValues.Load1 == 0 && avgLoadValues.Load5 == 0 && avgLoadValues.Load15 == 0 {
 		avgLoadValues, err = s.load(ctx)
@@ -102,9 +104,9 @@ func (s *scraper) scrape(ctx context.Context) (pmetric.Metrics, error) {
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
 
-		time.Sleep(sleepTimeSecs * time.Second)
-		// If the operation exceeds the allocated time, the function returns an "overtime error."
-		if time.Since(startTime) > overTimeMins*time.Minute {
+		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
+		// If the operation exceeds the allocated time, returns "overtime error."
+		if time.Since(startTime) > time.Duration(overTimeMins)*time.Minute {
 			err := errors.New("exceeds time to load data")
 			return pmetric.NewMetrics(), scrapererror.NewPartialScrapeError(err, metricsLen)
 		}
