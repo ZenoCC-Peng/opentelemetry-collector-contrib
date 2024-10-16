@@ -1,0 +1,51 @@
+type: tcpcheck
+
+status:
+  class: receiver
+  stability:
+    development: [metrics]
+  distributions: [contrib]
+  codeowners:
+    active: [atoulme, michael-burt, zeno-peng]
+
+
+resource_attributes:
+  tlscheck.url:
+    enabled: true
+    description: Url at which the certificate was accessed.
+    type: string
+
+attributes:
+  error.message:
+    description: Error message recorded during check
+    type: string
+  tcp.endpoint:
+    description: Full TCO endpoint
+    type: string
+
+metrics:
+  tcpcheck.status:
+    description: 1 if the TCP client successfully connected, otherwise 0.
+    enabled: true
+    sum:
+      value_type: int
+      aggregation_temporality: cumulative
+      monotonic: false
+    unit: "1"
+    attributes: [tcp.endpoint]
+  tcpcheck.duration:
+    description: Measures the duration of TCP connection.
+    enabled: true
+    gauge:
+      value_type: int
+    unit: ms
+    attributes: [tcp.endpoint]
+  tcpcheck.error:
+    description: Records errors occurring during TCP check.
+    enabled: true
+    sum:
+      value_type: int
+      aggregation_temporality: cumulative
+      monotonic: true
+    unit: "{error}"
+    attributes: [error.message]
